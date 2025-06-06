@@ -1,6 +1,7 @@
 package com.aniket.quizservice.service;
 
 import com.aniket.quizservice.dao.QuizDao;
+import com.aniket.quizservice.feign.QuizInterface;
 import com.aniket.quizservice.model.QuestionWrapper;
 import com.aniket.quizservice.model.Quiz;
 import com.aniket.quizservice.model.Response;
@@ -19,41 +20,27 @@ public class QuizService {
     @Autowired
     QuizDao quizDao;
 
-    public ResponseEntity<List<QuestionWrapper>> getQuizQuestions(Integer quizId) {
-//        Optional<Quiz> quiz = quizDao.findById(quizId);
-//        List<Question> questionsFromDb = quiz.get().getQuestions();
-        List<QuestionWrapper> questionWrappers = new ArrayList<>();
-//        for (Question q : questionsFromDb) {
-//            QuestionWrapper qw = new QuestionWrapper
-//                    (q.getId(),q.getQuestionTitle(),q.getOption1(),q.getOption2(),q.getOption3(),q.getOption4());
-//            questionWrappers.add(qw);
-//        }
-        return new ResponseEntity<>(questionWrappers, HttpStatus.OK);
-    }
+    @Autowired
+    QuizInterface quizInterface;
 
-//    @Autowired
-//    QuestionDao questionDao;
+    public ResponseEntity<String> createQuiz(String categoryName, Integer numQuestions, String title) {
+        List<Integer> questions = quizInterface.generateQuestionsForQuiz(categoryName, numQuestions).getBody();
+        Quiz quiz = new Quiz();
+        quiz.setTitle(title);
+        quiz.setQuestionIds(questions);
+        quizDao.save(quiz);
 
-    public ResponseEntity<String> createQuiz(String category, Integer numQ, String title) {
-
-//        List<Integer> questions = null;// call the "generate" url - RestTemplate http://localhost:8080/question/generate
-
-//        Quiz quiz = new Quiz();
-//        quiz.setTitle(title);
-//        quiz.setQuestions(questions);
-//        quizDao.save(quiz);
         return new ResponseEntity<>("Quiz created", HttpStatus.CREATED);
     }
 
+    public ResponseEntity<List<QuestionWrapper>> getQuizQuestions(Integer quizId) {
+        Quiz quiz = quizDao.findById(quizId).get();
+        List<Integer> questionIds = quiz.getQuestionIds();
+        List<QuestionWrapper> questionWrappers = quizInterface.getQuestionsFromId(questionIds).getBody();
+        return new ResponseEntity<>(questionWrappers, HttpStatus.OK);
+    }
+
     public ResponseEntity<Integer> calculateResult(Integer quizId, List<Response> responses) {
-//        Quiz quiz = quizDao.findById(quizId).get();
-//        List<Question> questions = quiz.getQuestions();
-        int rightAnswer = 0;
-//        int i = 0;
-//        for (Response r : responses) {
-//            if (r.getResponse().equals(questions.get(i).getCorrectAnswer())) rightAnswer++;
-//            i++;
-//        }
-        return new ResponseEntity<>(rightAnswer, HttpStatus.OK);
+        return quizInterface.getScore(responses);
     }
 }
